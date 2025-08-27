@@ -3,11 +3,10 @@
 #include "settings.h"
 #include "pipe.h"
  
-Pipe pipes[MAX_PIPES] = {0}; // Buffer to store Pipe structs.
-int curr_pipe = 0; // Most recently spawned Pipe.
-int next_pipe = 0; // Next Pipe the bird has to go through.
+Pipe pipes[MAX_PIPES] = {0};
+int curr_pipe = 0;
+int next_pipe = 0;
 
-// Spawn a Pipe.
 void spawn_pipe(void) {
   int h = GetRandomValue(PIPE_MIN_Y, PIPE_MAX_Y);
   Pipe *curr_ppipe = &pipes[curr_pipe];
@@ -17,7 +16,6 @@ void spawn_pipe(void) {
   curr_ppipe->alive = true;
 }
 
-// Spawn a Pipe if the last pipe spawned is enough far away.
 void maybe_spawn_pipe(void) {
   if (pipes[curr_pipe].top.x + PIPE_WIDTH < WIDTH - PIPE_H_GAP) {
     curr_pipe = (curr_pipe + 1) % MAX_PIPES;
@@ -25,7 +23,6 @@ void maybe_spawn_pipe(void) {
   }
 }
 
-// Move all alive pipes at SCROLL_SPEED.
 void move_pipes(float dt) {
   for (int i = 0; i < MAX_PIPES; i++) {
     if (pipes[i].alive) {
@@ -37,7 +34,6 @@ void move_pipes(float dt) {
   }
 }
 
-// Draw all alive pipes.
 void draw_pipes(void) {
   for (int i = 0; i < MAX_PIPES; i++) {
     if (pipes[i].alive) {

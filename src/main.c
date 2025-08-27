@@ -1,27 +1,31 @@
 #include <raylib.h>
 #include <stdbool.h>
+#include <math.h>
 #include "settings.h"
 #include "pipe.h"
 #include "bird.h"
 
-// Game state enum.
 typedef enum {
   RUN,
   IDLE
 } GameState;
 
-// Title.
+static int window_width, window_height;
+
 static const char *TITLE = "Floopy";
 
-// Bird and ground rectangles.
 static Rectangle Bird = {0};
 static Rectangle Ground = {0, HEIGHT - GROUND_HEIGHT, WIDTH, GROUND_HEIGHT};
 
 static int score = 0;
-static bool resetted = false; // Game only starts when this is true.
+static bool resetted = false;
 static GameState gs = IDLE;
 
-// Check collision bw roof, ground and pipes then return true/false.
+static RenderTexture2D target;
+static Rectangle src = {0, 0, WIDTH, -HEIGHT};
+static Vector2 origin = {0, 0};
+static Rectangle dest;
+
 static bool check_collision(void) {
   return (
     Bird.y < 0 ||
@@ -31,7 +35,6 @@ static bool check_collision(void) {
   );
 }
 
-// Count score when a bird successfully goes through a pipe.
 static void check_score(void) {
   if (Bird.x > pipes[next_pipe].top.x + PIPE_WIDTH) {
     score++;
@@ -39,7 +42,6 @@ static void check_score(void) {
   }
 }
 
-// RUN state.
 static void state_run(float dt) {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     bird_speed = FLAP;
@@ -57,9 +59,8 @@ static void state_run(float dt) {
 
 } 
 
-// Reset game variables.
 static void reset(void) {
-  Bird = (Rectangle){BIRD_STARTX, BIRD_STARTY, BIRD_SIZE, BIRD_SIZE};
+  Bird = (Rectangle){BIRD_STARTX, BIRD_STARTY, BIRD_WIDTH, BIRD_HEIGHT};
   score = 0;
   bird_speed = 0;
   curr_pipe = 0;
@@ -67,13 +68,7 @@ static void reset(void) {
   spawn_pipe();
 }
 
-// IDLE state.
 static void state_idle(float dt) {
-  /* Before allowing the user to start the game
-   * clear all objects from the screen (Pipes, bird).
-   * Once that's done, reset game variables and now
-   * recieve user input to start the game.
-  */
   if (!resetted) {
     bool pipe_visible = pipes[curr_pipe].alive &&
                        (pipes[curr_pipe].top.x + PIPE_WIDTH > 0);
@@ -103,24 +98,43 @@ static void state_idle(float dt) {
   }
 }
 
-// Render the frame.
 static void render(void) {
-  BeginDrawing();
+  BeginTextureMode(target);
   ClearBackground(RAYWHITE);
   draw_pipes();
   DrawRectangleRec(Bird, BLUE);
   DrawRectangleRec(Ground, GREEN);
-  DrawText(TextFormat("Score: %d", score), 10, 10, 40, BLACK);
+  DrawText(TextFormat("Score: %d", score), 10, 10, 25, BLACK);
+  EndTextureMode();
+
+  BeginDrawing();
+  DrawTexturePro(target.texture, src, dest, origin, 0, WHITE);
   EndDrawing();
 }
 
-// Initialize the renderer.
 static void init_renderer(void) {
-  InitWindow(WIDTH, HEIGHT, TITLE);
+  InitWindow(0, 0, TITLE);
+
+  int monitor = GetCurrentMonitor();
+  int screen_height = GetMonitorHeight(monitor);
+  int screen_width = GetMonitorWidth(monitor);
+
+  window_height = screen_height * W_HEIGHT_PERC;
+  window_width = window_height * ((float)WIDTH / HEIGHT);
+
+  int x = (screen_width - window_width) / 2;
+  int y = (screen_height - window_height) / 2;
+
+  SetWindowSize(window_width, window_height);
+  SetWindowPosition(x, y);
+
   SetTargetFPS(FPS);
+
+  target = LoadRenderTexture(WIDTH, HEIGHT);
+  SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
+  dest = (Rectangle){0, 0, window_width, window_height};
 }
 
-// Main game loop.
 static void game_loop(void) {
   while (!WindowShouldClose()) {
     float dt = GetFrameTime();
@@ -136,12 +150,11 @@ static void game_loop(void) {
   }
 } 
 
-// End renderer.
 static void end_renderer(void) {
+  UnloadRenderTexture(target);
   CloseWindow();
 }
 
-// MAIN.
 int main() {
   init_renderer();
   game_loop();
