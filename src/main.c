@@ -1,9 +1,10 @@
 #include <raylib.h>
 #include <stdbool.h>
-#include <math.h>
 #include "settings.h"
+#include "bg_gnd.h"
 #include "pipe.h"
 #include "bird.h"
+#include "score.h"
 
 typedef enum {
   RUN,
@@ -12,104 +13,130 @@ typedef enum {
 
 static int window_width, window_height;
 
-static const char *TITLE = "Floopy";
+static const char *TITLE = "FlappyBird";
 
-static Rectangle Bird = {0};
-static Rectangle Ground = {0, HEIGHT - GROUND_HEIGHT, WIDTH, GROUND_HEIGHT};
-
-static int score = 0;
-static bool resetted = false;
 static GameState gs = IDLE;
+static bool start_screen = true;
 
 static RenderTexture2D target;
-static Rectangle src = {0, 0, WIDTH, -HEIGHT};
-static Vector2 origin = {0, 0};
+static Rectangle src;
+static Vector2 origin;
 static Rectangle dest;
+
+Texture2D flappy_bird_tx;
+Texture2D tap_tx;
 
 static bool check_collision(void) {
   return (
-    Bird.y < 0 ||
-    Bird.y + Bird.height >= Ground.y ||
-    CheckCollisionRecs(Bird, pipes[next_pipe].top) ||
-    CheckCollisionRecs(Bird, pipes[next_pipe].bottom)
+    bird_collision_roof() ||
+    bird_collision_gnd() ||
+    pipe_collision_bird(bird_get_rect())
   );
 }
 
 static void check_score(void) {
-  if (Bird.x > pipes[next_pipe].top.x + PIPE_WIDTH) {
-    score++;
-    next_pipe = (next_pipe + 1) % MAX_PIPES;
-  }
+  if (pipe_is_passed(bird_get_rect()))
+    score_inc();
 }
 
 static void state_run(float dt) {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-    bird_speed = FLAP;
+    bird_flap();
   }
 
-  bird_apply_gravity(&Bird, &Ground, dt);
-  maybe_spawn_pipe();
-  move_pipes(dt);
+  pipe_maybe_spawn();
+  pipe_move_all(dt);
+  bird_apply_gravity(dt);
+  bird_animate(dt);
 
   if (check_collision()) {
     gs = IDLE;
   } else {
     check_score();
   }
-
 } 
 
 static void reset(void) {
-  Bird = (Rectangle){BIRD_STARTX, BIRD_STARTY, BIRD_WIDTH, BIRD_HEIGHT};
-  score = 0;
-  bird_speed = 0;
-  curr_pipe = 0;
-  next_pipe = 0;
-  spawn_pipe();
+  bird_reset();
+  score_reset();
+  pipe_reset();
 }
 
 static void state_idle(float dt) {
-  if (!resetted) {
-    bool pipe_visible = pipes[curr_pipe].alive &&
-                       (pipes[curr_pipe].top.x + PIPE_WIDTH > 0);
-    bool bird_visible = (Bird.x + Bird.width > 0);
-
-    if (pipe_visible)
-      move_pipes(dt);
-
-    if (bird_visible) {
-      if (Bird.y + Bird.height == Ground.y) {
-        Bird.x -= SCROLL_SPEED * dt;
-      } else {
-        bird_apply_gravity(&Bird, &Ground, dt);
-      }
-    }
-
-    if (!pipe_visible && !bird_visible) {
-      reset();
-      resetted = true;
+  if (start_screen) {
+    bird_animate(dt);
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      gs = RUN;
+      start_screen = false;
+      pipe_spawn();
     }
 
   } else {
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-      gs = RUN;
-      resetted = false;
+    bool pipe_is_visible = pipe_visible();
+    bool bird_is_visible = bird_visible();
+
+    if (pipe_is_visible)
+      pipe_move_all(dt);
+
+    if (bird_is_visible) {
+      if (bird_collision_gnd()) {
+        bird_scroll(dt);
+      } else {
+        bird_apply_gravity(dt);
+      }
+    }
+
+    if (!pipe_is_visible && !bird_is_visible) {
+      reset();
+      start_screen = true;
     }
   }
+}
+
+void start_screen_load_assets(void) {
+  flappy_bird_tx = LoadTexture("sprites/flappy-bird.png");
+  tap_tx = LoadTexture("sprites/tap.png");
+}
+
+void start_screen_unload_assets(void) {
+  UnloadTexture(flappy_bird_tx);
+  UnloadTexture(tap_tx);
+}
+
+void start_screen_draw(void) {
+  DrawTexture(flappy_bird_tx, (WIDTH - flappy_bird_tx.width)/2, HEADER_Y, WHITE);
+  DrawTexture(tap_tx, (WIDTH - tap_tx.width)/2, HEIGHT/4 + (HEIGHT - tap_tx.height)/2, WHITE);
 }
 
 static void render(void) {
   BeginTextureMode(target);
   ClearBackground(RAYWHITE);
-  draw_pipes();
-  DrawRectangleRec(Bird, BLUE);
-  DrawRectangleRec(Ground, GREEN);
-  DrawText(TextFormat("Score: %d", score), 10, 10, 25, BLACK);
+
+  bg_draw();
+  gnd_draw();
+
+  if (start_screen)
+    start_screen_draw();
+  else {
+    pipe_draw_all();
+    score_draw();
+  }
+
+  bird_draw();
+    
   EndTextureMode();
 
   BeginDrawing();
   DrawTexturePro(target.texture, src, dest, origin, 0, WHITE);
   EndDrawing();
+}
+
+static void load_assets(void) {
+  bg_gnd_load_assets();
+  start_screen_load_assets();
+  score_load_assets();
+  pipe_load_assets();
+  bird_load_assets();
 }
 
 static void init_renderer(void) {
@@ -132,7 +159,18 @@ static void init_renderer(void) {
 
   target = LoadRenderTexture(WIDTH, HEIGHT);
   SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
+  src = (Rectangle){0, 0, WIDTH, -HEIGHT};
+  origin = (Vector2){0, 0};
   dest = (Rectangle){0, 0, window_width, window_height};
+
+  load_assets();
+}
+
+void init_game(void) {
+  Time t = GetRandomValue(DAY, NIGHT);
+  bg_set_tx(t);
+  pipe_set_tx(t);
+  bird_set_tx();
 }
 
 static void game_loop(void) {
@@ -146,17 +184,28 @@ static void game_loop(void) {
         state_idle(dt);
         break;
     }
+    gnd_update(dt);
     render();
   }
 } 
 
+static void unload_assets(void) {
+  bg_gnd_unload_assets();
+  start_screen_unload_assets();
+  score_unload_assets();
+  pipe_unload_assets();
+  bird_unload_assets();
+}
+
 static void end_renderer(void) {
   UnloadRenderTexture(target);
+  unload_assets();
   CloseWindow();
 }
 
 int main() {
   init_renderer();
+  init_game();
   game_loop();
   end_renderer();
   return 0;

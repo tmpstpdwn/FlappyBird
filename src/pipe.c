@@ -2,13 +2,35 @@
 #include <stdbool.h>
 #include "settings.h"
 #include "pipe.h"
- 
-Pipe pipes[MAX_PIPES] = {0};
-int curr_pipe = 0;
-int next_pipe = 0;
 
-void spawn_pipe(void) {
-  int h = GetRandomValue(PIPE_MIN_Y, PIPE_MAX_Y);
+static Pipe pipes[MAX_PIPES] = {0};
+static int curr_pipe = 0;
+static int next_pipe = 0;
+
+static Texture2D pipe_tx[NIGHT + 1][PIPE_DOWN + 1];
+static Time curr_pipe_tx = DAY;
+
+void pipe_load_assets(void) {
+  Image pipe_img = LoadImage("sprites/pipe-green.png");
+  pipe_tx[DAY][PIPE_UP] = LoadTextureFromImage(pipe_img);
+  ImageFlipVertical(&pipe_img);
+  pipe_tx[DAY][PIPE_DOWN] = LoadTextureFromImage(pipe_img);
+
+  UnloadImage(pipe_img);
+  pipe_img = LoadImage("sprites/pipe-red.png");
+  pipe_tx[NIGHT][PIPE_UP] = LoadTextureFromImage(pipe_img);
+  ImageFlipVertical(&pipe_img);
+  pipe_tx[NIGHT][PIPE_DOWN] = LoadTextureFromImage(pipe_img);
+
+  UnloadImage(pipe_img);
+}
+
+void pipe_set_tx(Time t) {
+  curr_pipe_tx = t;
+}
+
+void pipe_spawn(void) {
+  int h = GetRandomValue(PIPE_MIN_H, PIPE_MAX_H);
   Pipe *curr_ppipe = &pipes[curr_pipe];
   curr_ppipe->top = (Rectangle){WIDTH, 0, PIPE_WIDTH, h};
   curr_ppipe->bottom = (Rectangle){WIDTH, curr_ppipe->top.height + PIPE_V_GAP,
@@ -16,29 +38,58 @@ void spawn_pipe(void) {
   curr_ppipe->alive = true;
 }
 
-void maybe_spawn_pipe(void) {
+void pipe_maybe_spawn(void) {
   if (pipes[curr_pipe].top.x + PIPE_WIDTH < WIDTH - PIPE_H_GAP) {
     curr_pipe = (curr_pipe + 1) % MAX_PIPES;
-    spawn_pipe();
+    pipe_spawn();
   }
 }
 
-void move_pipes(float dt) {
+void pipe_move_all(float dt) {
   for (int i = 0; i < MAX_PIPES; i++) {
     if (pipes[i].alive) {
       pipes[i].top.x -= SCROLL_SPEED * dt;
       pipes[i].bottom.x = pipes[i].top.x;
-      if (pipes[i].top.x + pipes[i].top.width < 0)
+      if (pipes[i].top.x + pipes[i].top.width <= 0)
         pipes[i].alive = false;
     }
   }
 }
 
-void draw_pipes(void) {
+bool pipe_collision_bird(Rectangle bird_rect) {
+  return (CheckCollisionRecs(bird_rect, pipes[next_pipe].top) ||
+          CheckCollisionRecs(bird_rect, pipes[next_pipe].bottom));
+}
+
+bool pipe_is_passed(Rectangle bird_rect) {
+  if (bird_rect.x > pipes[next_pipe].top.x + PIPE_WIDTH) {
+    next_pipe = (next_pipe + 1) % MAX_PIPES;
+    return true;
+  }
+  return false;
+}
+
+bool pipe_visible(void) {
+  return (pipes[curr_pipe].alive &&
+          (pipes[curr_pipe].top.x + PIPE_WIDTH > 0));
+}
+
+void pipe_draw_all(void) {
   for (int i = 0; i < MAX_PIPES; i++) {
     if (pipes[i].alive) {
-      DrawRectangleRec(pipes[i].top, BLACK);
-      DrawRectangleRec(pipes[i].bottom, BLACK);
+      DrawTextureRec(pipe_tx[curr_pipe_tx][PIPE_DOWN], (Rectangle){0, PIPE_HEIGHT - pipes[i].top.height, PIPE_WIDTH, pipes[i].top.height}, (Vector2){pipes[i].top.x, 0}, WHITE);
+      DrawTextureRec(pipe_tx[curr_pipe_tx][PIPE_UP], (Rectangle){0, 0, PIPE_WIDTH, pipes[i].bottom.height}, (Vector2){pipes[i].bottom.x, pipes[i].bottom.y}, WHITE);
     }
   }
 } 
+
+void pipe_reset(void) {
+  curr_pipe = next_pipe = 0;
+}
+
+void pipe_unload_assets(void) {
+    UnloadTexture(pipe_tx[DAY][PIPE_UP]);
+    UnloadTexture(pipe_tx[DAY][PIPE_DOWN]);
+    UnloadTexture(pipe_tx[NIGHT][PIPE_UP]);
+    UnloadTexture(pipe_tx[NIGHT][PIPE_DOWN]);
+}
