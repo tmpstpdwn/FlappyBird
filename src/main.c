@@ -11,20 +11,24 @@ typedef enum {
   IDLE
 } GameState;
 
-static int window_width, window_height;
-
 static const char *TITLE = "FlappyBird";
 
-static GameState gs = IDLE;
-static bool start_screen = true;
+static int window_width, window_height;
 
 static RenderTexture2D target;
 static Rectangle src;
 static Vector2 origin;
 static Rectangle dest;
 
-Texture2D flappy_bird_tx;
-Texture2D tap_tx;
+static Texture2D flappy_bird_tx;
+static Texture2D tap_tx;
+
+static Sound hit_snd;
+static Sound point_snd;
+static Sound wing_snd;
+
+static GameState gs = IDLE;
+static bool start_screen = true;
 
 static bool check_collision(void) {
   return (
@@ -35,12 +39,15 @@ static bool check_collision(void) {
 }
 
 static void check_score(void) {
-  if (pipe_is_passed(bird_get_rect()))
+  if (pipe_is_passed(bird_get_rect())) {
+    PlaySound(point_snd);
     score_inc();
+  }
 }
 
 static void state_run(float dt) {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+    PlaySound(wing_snd);
     bird_flap();
   }
 
@@ -50,6 +57,7 @@ static void state_run(float dt) {
   bird_animate(dt);
 
   if (check_collision()) {
+    PlaySound(hit_snd);
     gs = IDLE;
   } else {
     check_score();
@@ -93,17 +101,17 @@ static void state_idle(float dt) {
   }
 }
 
-void start_screen_load_assets(void) {
+static void start_screen_load_assets(void) {
   flappy_bird_tx = LoadTexture("sprites/flappy-bird.png");
   tap_tx = LoadTexture("sprites/tap.png");
 }
 
-void start_screen_unload_assets(void) {
+static void start_screen_unload_assets(void) {
   UnloadTexture(flappy_bird_tx);
   UnloadTexture(tap_tx);
 }
 
-void start_screen_draw(void) {
+static void start_screen_draw(void) {
   DrawTexture(flappy_bird_tx, (WIDTH - flappy_bird_tx.width)/2, HEADER_Y, WHITE);
   DrawTexture(tap_tx, (WIDTH - tap_tx.width)/2, HEIGHT/4 + (HEIGHT - tap_tx.height)/2, WHITE);
 }
@@ -139,6 +147,12 @@ static void load_assets(void) {
   bird_load_assets();
 }
 
+static void load_audio(void) {
+  hit_snd = LoadSound("audio/hit.wav");
+  point_snd = LoadSound("audio/point.wav");
+  wing_snd = LoadSound("audio/wing.wav");
+}
+
 static void init_renderer(void) {
   InitWindow(0, 0, TITLE);
 
@@ -155,6 +169,10 @@ static void init_renderer(void) {
   SetWindowSize(window_width, window_height);
   SetWindowPosition(x, y);
 
+  Image icon = LoadImage("FlappyBird.png");
+  SetWindowIcon(icon);
+  UnloadImage(icon);
+
   SetTargetFPS(FPS);
 
   target = LoadRenderTexture(WIDTH, HEIGHT);
@@ -164,9 +182,12 @@ static void init_renderer(void) {
   dest = (Rectangle){0, 0, window_width, window_height};
 
   load_assets();
+
+  InitAudioDevice();
+  load_audio();
 }
 
-void init_game(void) {
+static void init_game(void) {
   Time t = GetRandomValue(DAY, NIGHT);
   bg_set_tx(t);
   pipe_set_tx(t);
@@ -197,9 +218,16 @@ static void unload_assets(void) {
   bird_unload_assets();
 }
 
+static void unload_audio(void) {
+  UnloadSound(hit_snd);
+  UnloadSound(point_snd);
+  UnloadSound(wing_snd);
+}
+
 static void end_renderer(void) {
   UnloadRenderTexture(target);
   unload_assets();
+  unload_audio();
   CloseWindow();
 }
 
