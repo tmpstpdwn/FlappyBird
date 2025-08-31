@@ -7,7 +7,7 @@ SRC = src/main.c src/pipe.c src/bird.c src/bg_gnd.c src/score.c
 
 OBJ = $(SRC:src/%.c=obj/%.o)
 
-TARGET = floopy
+TARGET = fb
 
 all: $(TARGET)
 
