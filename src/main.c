@@ -155,6 +155,7 @@ static void load_audio(void) {
 
 static void init_renderer(void) {
   InitWindow(0, 0, TITLE);
+  InitAudioDevice();
 
   int monitor = GetCurrentMonitor();
   int screen_height = GetMonitorHeight(monitor);
@@ -182,8 +183,6 @@ static void init_renderer(void) {
   dest = (Rectangle){0, 0, window_width, window_height};
 
   load_assets();
-
-  InitAudioDevice();
   load_audio();
 }
 
