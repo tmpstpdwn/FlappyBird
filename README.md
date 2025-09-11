@@ -19,6 +19,12 @@ make
 - Avoid collisions with roof, ground or pipes.
 - Navigate the bird through incoming pipes and score points.
 
+## Important
+
+- The assets used in this game (audio and visual) does not belong to me.
+- I did not make them.
+- I found them on internet sites and other repo's just like this.
+
 ## License
 
 This project is licensed under MIT [LICENSE](LICENSE).
