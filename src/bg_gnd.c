@@ -2,6 +2,28 @@
 #include "settings.h"
 #include "bg_gnd.h"
 
+/*
+BG
+--
+
+BG is static.
+
+GROUND
+------
+
+- Two ground textures are drawn side by side and
+  moved along the horizontal direction to the left to
+  make them scroll.
+- It starts with the first one beign on the screen and
+  the second one out to the right of the screen.
+- with time the first one moves out of the screen to the left.
+- once the first one is completely out of the screen to the
+  left of the screen, the positions of the 2 ground
+  textures are reset to they're initial ones.
+
+This creates the illution of an endless scrolling ground. 
+*/
+
 static Texture2D bg_tx[NIGHT + 1];
 static Time curr_bg_tx = DAY;
 

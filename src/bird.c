@@ -3,9 +3,9 @@
 #include "bird.h"
 
 static Texture2D bird_tx[BIRDS][BIRD_SPRITES];
-static int bird = 0;
-static float bird_speed = 0;
-static float bird_sprite = 0;
+static int bird = 0; // Bird to use (blue, red, yellow).
+static float bird_speed = 0; // Bird vertical speed.
+static float bird_sprite = 0; // Current bird sprite (downflap, midflap, upflap).
 static Rectangle bird_rect = (Rectangle){BIRD_STARTX, BIRD_STARTY, BIRD_WIDTH, BIRD_HEIGHT};
 
 void bird_load_assets(void) {

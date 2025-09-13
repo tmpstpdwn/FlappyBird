@@ -4,6 +4,15 @@
 #include "settings.h"
 #include "score.h"
 
+/*
+- The score is rendered to a RenderTexture2D (offscreen buffer)
+  whose width spans the entire WIDTH and height spans the height of
+  a single digit texture.
+- This RenderTexture2D is only updated when score_box_update is called.
+- In the game, this RenderTexture2D is drawn every frame but is only updated
+  when the score have changed. 
+*/
+
 static unsigned int score = 0;
 static Texture2D score_tx[SCORE_TEXTURES];
 static RenderTexture2D score_box;
@@ -24,7 +33,7 @@ static void score_box_update(void) {
   for (int i = 0; i < num_digits; i++) {
     int digit = score_str[i] - '0';
     DrawTexture(score_tx[digit], x + x_offset, 0, WHITE);
-    x_offset += score_tx[digit].width + SCORE_PADDING;
+    x_offset += score_tx[digit].width + SCORE_SPACING;
   }
 
   EndTextureMode();

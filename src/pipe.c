@@ -3,10 +3,22 @@
 #include "settings.h"
 #include "pipe.h"
 
+/*
+The pipe algorithm uses a circular buffer strategy
+to reuse pipes as there will only be a fixed number of
+pipes on screen at anytime.
+*/
+
+// Pipes array.
 static Pipe pipes[MAX_PIPES] = {0};
+
+// Index of the most recently spawned pipe in the pipes array.
 static int curr_pipe = 0;
+
+// Index of the next pipe the bird has to pass through in the pipes array.
 static int next_pipe = 0;
 
+// Array to store all pipe textures.
 static Texture2D pipe_tx[NIGHT + 1][PIPE_DOWN + 1];
 static Time curr_pipe_tx = DAY;
 
@@ -39,6 +51,10 @@ void pipe_spawn(void) {
 }
 
 void pipe_maybe_spawn(void) {
+  /*
+  Spawn a new pipe if the previously spawned pipe is
+  PIPE_H_GAP or more far away from the window's right edge.
+  */
   if (pipes[curr_pipe].top.x + PIPE_WIDTH < WIDTH - PIPE_H_GAP) {
     curr_pipe = (curr_pipe + 1) % MAX_PIPES;
     pipe_spawn();
@@ -62,6 +78,11 @@ bool pipe_collision_bird(Rectangle bird_rect) {
 }
 
 bool pipe_is_passed(Rectangle bird_rect) {
+  /*
+  Check if the bird has passed pipes[next_pipe].
+  if yes, return true and set next_pipe to next pipe
+  the bird has to pass through.
+  */
   if (bird_rect.x > pipes[next_pipe].top.x + PIPE_WIDTH) {
     next_pipe = (next_pipe + 1) % MAX_PIPES;
     return true;

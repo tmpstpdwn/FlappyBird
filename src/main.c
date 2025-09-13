@@ -6,6 +6,16 @@
 #include "bird.h"
 #include "score.h"
 
+/*
+The game initially renders to a RenderTexture2D (offscreen buffer) of WIDTH * HEIGHT (defined in settings.h)
+and then scales the buffer to window size which is determined at runtime based on monitor size.
+*/
+
+/* Gamestates enum.
+The game starts in IDLE then -> RUN when started
+and then -> IDLE state after GAMEOVER.
+This goes on and on...
+*/
 typedef enum {
   RUN,
   IDLE
@@ -13,20 +23,28 @@ typedef enum {
 
 static const char *TITLE = "FlappyBird";
 
+// Window width, height to be determined at runtime.
 static int window_width, window_height;
 
+// RenderTexture2D stuff.
 static RenderTexture2D target;
-static Rectangle src;
-static Vector2 origin;
+static Vector2 origin = (Vector2){0, 0};
+static Rectangle src = (Rectangle){0, 0, WIDTH, -HEIGHT};
 static Rectangle dest;
+/*
+target, dest will be setup at runtime as they depend on
+window width, height which has to be determined at runtime.
+*/
 
+// Textures for flappybird icon.
 static Texture2D flappy_bird_tx;
-static Texture2D tap_tx;
 
+// Sounds.
 static Sound hit_snd;
 static Sound point_snd;
 static Sound wing_snd;
 
+// Game context variables.
 static GameState gs = IDLE;
 static bool start_screen = true;
 
@@ -71,6 +89,12 @@ static void reset(void) {
 }
 
 static void state_idle(float dt) {
+
+  /*
+  Wait till the dead bird and spawned pipes are out of the screen
+  before resetting and going to start screen.
+  */
+  
   if (start_screen) {
     bird_animate(dt);
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -103,20 +127,18 @@ static void state_idle(float dt) {
 
 static void start_screen_load_assets(void) {
   flappy_bird_tx = LoadTexture("sprites/flappy-bird.png");
-  tap_tx = LoadTexture("sprites/tap.png");
 }
 
 static void start_screen_unload_assets(void) {
   UnloadTexture(flappy_bird_tx);
-  UnloadTexture(tap_tx);
 }
 
 static void start_screen_draw(void) {
   DrawTexture(flappy_bird_tx, (WIDTH - flappy_bird_tx.width)/2, HEADER_Y, WHITE);
-  DrawTexture(tap_tx, (WIDTH - tap_tx.width)/2, HEIGHT/4 + (HEIGHT - tap_tx.height)/2, WHITE);
 }
 
 static void render(void) {
+  // Render to RenderTexture2D.
   BeginTextureMode(target);
   ClearBackground(RAYWHITE);
 
@@ -131,9 +153,9 @@ static void render(void) {
   }
 
   bird_draw();
-    
   EndTextureMode();
 
+  // Scale RenderTexture2D to window size.
   BeginDrawing();
   DrawTexturePro(target.texture, src, dest, origin, 0, WHITE);
   EndDrawing();
@@ -161,12 +183,15 @@ static void init_renderer(void) {
   int screen_height = GetMonitorHeight(monitor);
   int screen_width = GetMonitorWidth(monitor);
 
+  // Calculate window diamensions.
   window_height = screen_height * W_HEIGHT_PERC;
   window_width = window_height * ((float)WIDTH / HEIGHT);
 
+  // Calculate (x, y) to center the window.
   int x = (screen_width - window_width) / 2;
   int y = (screen_height - window_height) / 2;
 
+  // Resize and Center the window.
   SetWindowSize(window_width, window_height);
   SetWindowPosition(x, y);
 
@@ -174,12 +199,12 @@ static void init_renderer(void) {
   SetWindowIcon(icon);
   UnloadImage(icon);
 
+  // Limit FPS.
   SetTargetFPS(FPS);
 
+  // Setup RenderTexture2D.
   target = LoadRenderTexture(WIDTH, HEIGHT);
   SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
-  src = (Rectangle){0, 0, WIDTH, -HEIGHT};
-  origin = (Vector2){0, 0};
   dest = (Rectangle){0, 0, window_width, window_height};
 
   load_assets();
@@ -187,6 +212,9 @@ static void init_renderer(void) {
 }
 
 static void init_game(void) {
+  /*
+  Set a random Background and Bird texture.
+  */
   Time t = GetRandomValue(DAY, NIGHT);
   bg_set_tx(t);
   pipe_set_tx(t);
@@ -204,7 +232,7 @@ static void game_loop(void) {
         state_idle(dt);
         break;
     }
-    gnd_update(dt);
+    gnd_update(dt); // Ground will scroll always regardless of GameState.
     render();
   }
 } 
