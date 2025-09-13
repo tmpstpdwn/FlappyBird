@@ -15,15 +15,17 @@ make
 
 ## How to play
 
-- Use the left mouse button to make the bird flap.
-- Avoid collisions with roof, ground or pipes.
-- Navigate the bird through incoming pipes and score points.
+- Click the left mouse button to make the bird flap upward.
+- Avoid hitting the ground, ceiling, or pipes.
+- Pass through the gaps between pipes to score points.
+- Try to stay alive as long as possible!
 
 ## Important
 
-- The assets used in this game (audio and visual) does not belong to me.
-- I did not make them.
-- I found them on internet sites and other repo's just like this.
+- All audio and visual assets used in this project are not original creations.
+- I do not claim ownership of these assets.
+- They were sourced from various free resources and repositories available online.
+- If you are the creator of any asset and would like credit or removal, please let me know
 
 ## License
 
